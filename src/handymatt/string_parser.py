@@ -1,36 +1,35 @@
-import parse
+from typing import Any
+import parse #type:ignore
 
 class StringParser:
+    """ Class for converting string -> dict and vice versa given a list of filename formats """
 
-    def __init__(self, formats, use_tags=True):
-        self.formats = self.expand_formats(formats)
+    def __init__(self, formats: list[str]|str|None, use_tags:bool=True):
+        if formats == None:
+            raise Exception('No format(s) given to the Parser')
+        self.formats = self._expand_formats(formats)
         self.use_tags = use_tags
         self.tags_sep = ' #'
     
-    def parse(self, string):
-        if self.formats == None:
-            raise Exception('No format(s) given to the Parser')
+    def parse(self, string: str) -> dict[str, Any] | None:
         for f in self.formats:
             string_cpy = string
+            extracted_tags = []
             if self.use_tags:
-                string_cpy, tags = self.extract_tags(string_cpy)
-                # for t in tags:
-                #     string_cpy = string_cpy.replace( f'{self.tags_sep}{t}', '' )
-            parsed_data = parse.parse(f, string_cpy)
+                string_cpy, extracted_tags = self._extract_tags_from_string(string_cpy)
+            parsed_data = parse.parse(f, string_cpy) #type:ignore
             if parsed_data != None:
-                data = parsed_data.named
+                data = parsed_data.named #type:ignore
                 if self.use_tags:
-                    data['tags'] = tags
-                return data
+                    data['tags'] = extracted_tags
+                return data #type:ignore
         return None
     
-    def format(self, data):
-        data = self.prune_data(data)
-        if self.formats == None:
-            raise Exception('No format(s) given to the Parser')
-        tags, data = self.separate_tags(data)
+    def format(self, data: dict[str, Any]) -> str | None:
+        data = self._prune_data(data)
+        tags, data = self._separate_tags(data)
         for f in self.formats:
-            f = self.remove_unsupported_format_codes(f)
+            f = self._remove_unsupported_format_codes(f)
             try:
                 str = f.format(**data)
                 if self.use_tags:
@@ -41,8 +40,9 @@ class StringParser:
                 pass
         return None
     
-    def extract_tags(self, string):
-        tags = []
+    def _extract_tags_from_string(self, string: str):
+        """ Extracts tags defined as `#TagName` from a string """
+        tags: list[str] = []
         parts = string.split(self.tags_sep)
         for i in reversed(range(1, len(parts))):
             part = parts[i]
@@ -51,7 +51,7 @@ class StringParser:
         return parts[0], tags
     
     @staticmethod
-    def separate_tags(data):
+    def _separate_tags(data: dict[str, Any]):
         tags = []
         if 'tags' in data:
             tags = [ t.replace(' ', '-') for t in data['tags'] ]
@@ -59,21 +59,21 @@ class StringParser:
         return tags, data
     
     @staticmethod
-    def remove_unsupported_format_codes(f):
+    def _remove_unsupported_format_codes(fmt: str):
         for code in [':S', ':D']:
-            f = f.replace(code, '')
-        return f
+            fmt = fmt.replace(code, '')
+        return fmt
     
-    def expand_formats(self, formats):
+    def _expand_formats(self, formats: list[str] | str) -> list[str]:
         opt_sig = ';opt'
         if not isinstance(formats, list):
             formats = [formats]
-        new_formats = []
+        new_formats: list[str] = []
         for fmt_base in formats:
             format_parts = fmt_base.split()
             optional_count = len([c for c in format_parts if c.endswith(opt_sig)])
             for n in range(2**optional_count):
-                parts = []
+                parts: list[str] = []
                 i = 0
                 for part in format_parts:
                     if not part.endswith(opt_sig):
@@ -87,64 +87,50 @@ class StringParser:
                 new_formats.append(fmt)
         new_formats.sort(
             reverse=True, 
-            key=lambda fmt: ( len(self.get_parse_in_fmt(fmt)), len(self.get_non_param_chars(fmt)) )
+            key=lambda fmt: ( len(self._get_parse_in_fmt(fmt)), len(self._get_non_param_chars(fmt)) )
         )
         return new_formats
     
     @staticmethod
-    def get_parse_in_fmt(fmt):
+    def _get_parse_in_fmt(fmt: str) -> list[str]:
         return fmt.split('}')
     
     @staticmethod
-    def get_non_param_chars(fmt):
+    def _get_non_param_chars(fmt: str) -> str:
         parts = fmt.split('{')
         parts = [ p.split('}')[-1] for p in parts ]
         string = ''.join(parts).replace(' ', '')
         return string
     
     @staticmethod
-    def is_date(str):
+    def _is_date(str: str):
         for c in '.-_':
             str = str.replace(c, '')
         return str.isnumeric()
     
     @staticmethod
-    def prune_data(data):
+    def _prune_data(data: dict[str, Any]):
         remove_keys = [ k for k, v in data.items() if v == None ]
         for k in remove_keys:
             del data[k]
         return data
 
     @staticmethod
-    def to_cc(str):
-        if ' ' not in str:
-            return str
-        parts = [ p for p in str.lower().split(" ") if p != '' ]
+    def _to_cc(string: str):
+        if ' ' not in string:
+            return string
+        parts = [ p for p in string.lower().split(" ") if p != '' ]
         for i in range(len(parts)):
             part = parts[i]
             parts[i] = part[:1].upper() + part[1:]
         return ''.join(parts)
     
     @staticmethod
-    def from_cc(str):
-        chars = []
-        for c in list(str):
+    def _from_cc(string: str):
+        chars: list[str] = []
+        for c in list(string):
             if c.isupper():
                 chars.append(' ')
             chars.append(c)
         return ''.join(chars)
 
-
-
-if __name__ == '__main__':
-
-    formats = [
-        "{sort_performer} - {studio:ns} - [{year:d;opt}] [{date_released:dt;opt}] [{line:ns;opt}] {scene_title} ({mention_performer:opt}) [{other_info:opt}]",
-        "[{studio:ns}] [{year:d;opt}] [{date_released:dt;opt}] [{line:ns;opt}] {scene_title} ({sort_performer:opt}) [{other_info:opt}]",
-        "{sort_performer} [{year:d;opt}] [{date_released:dt;opt}] {scene_title} [{other_info:opt}]",
-        "[{jav_code:ns}]",
-        "{sort_performer} - {scene_title}",
-        "{scene_title}",
-    ]
-
-    parser = StringParser(formats)
