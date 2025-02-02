@@ -1,3 +1,3 @@
 
-## 0.0.2
-- 
+## 0.0.1
+- added strict type checking
