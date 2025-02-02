@@ -1,7 +1,13 @@
-# TODO:
-# - add removeKey() functionality
-# - [REVISE] simplity method names
-# - [REVISE] Extend dict functinality, handler[key] = value, del handler[key], key in handler, len(handler)
+# Ideas for v2:
+# - add temp .~lock file when open (thing about this carefully, eg what happens when program crashes, how to use class instance id or something)
+# - handler can be treated like a dict (handler[key] = value etc)
+#   * handler[key] = value
+#   * del handler[key]
+#   * key in handler
+#   * len(handler)
+# - simplify methods    .getValue() -> .get()
+# - add removeKey() (AND del handler[key])
+# - add iteration of items without needing .items()
 from typing import Any
 import json
 import os
