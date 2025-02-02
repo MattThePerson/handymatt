@@ -6,7 +6,6 @@ A collection of custom libraries that I use in many of my Python projects!
 - `JsonHandler`: 
 - `StringParser`: 
 - `BookmarksGetter`: 
-- `image_metadata`: [ABANDONED] 
 
 ## Libraries to add:
 - `sqlite_api`: 
