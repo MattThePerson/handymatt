@@ -14,7 +14,8 @@ class BookmarksGetter:
     '''
     DEFUALT_BOOKMARKS_PATHS = [
         r'%localappdata%\Google\Chrome\User Data\Default\Bookmarks',
-        r'%localappdata%\BraveSoftware\Brave-Browser\User Data\Default\Bookmarks',
+        '/mnt/c/Users/stirl/AppData/Local/BraveSoftware/Brave-Browser/User Data/Default/Bookmarks' # WSL bandaid
+        # r'%localappdata%\BraveSoftware\Brave-Browser\User Data\Default\Bookmarks',
     ]
 
     @classmethod
