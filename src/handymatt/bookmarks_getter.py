@@ -1,5 +1,5 @@
 from typing import Any
-import os
+#import os
 import json
 import datetime
 
@@ -27,7 +27,7 @@ class BookmarksGetter:
         if bookmarks_path == None:
             print('Cannot find bookmarks for browser named "{}"'.format(browser))
             return None
-        bookmarks_path = bookmarks_path.replace(r'%localappdata%', os.getenv('LOCALAPPDATA')) #type:ignore
+        # bookmarks_path = bookmarks_path.replace(r'%localappdata%', os.getenv('LOCALAPPDATA')) #type:ignore
         with open(bookmarks_path, 'r') as f:
             bookmarks_json = json.load(f)
         if browser.lower() not in 'chrome chromium bravesoftware edge':
