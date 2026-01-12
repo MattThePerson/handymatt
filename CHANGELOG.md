@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## 2.0.1
+- refactored BookmarksGetter: now returns Bookmarks class
+
 ## 1.1.3
 - added wsl bandaid to BookmarksGetter
 
