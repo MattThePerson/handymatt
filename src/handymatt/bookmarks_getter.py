@@ -3,7 +3,6 @@ import os
 import json
 import datetime
 import platform
-import subprocess
 
 from enum import Enum
 from dataclasses import dataclass, fields
@@ -12,8 +11,9 @@ from .wsl_paths import convert_to_wsl_path
 
 
 # ==============================================================================
-# OS detction
+# region OS detction
 # ==============================================================================
+
 def _is_Windows():
     return platform.system() == "Windows"
 
@@ -27,19 +27,12 @@ def _is_Linux():
     return platform.system() == "Linux" and not _is_WSL()
 
 
-def get_windows_localappdata():
-    try:
-        win_path = subprocess.check_output(
-            ["cmd.exe", "/c", "echo", "%LOCALAPPDATA%"],
-            text=True
-        ).strip()
-        return subprocess.check_output(
-            ["wslpath", "-u", win_path],
-            text=True
-        ).strip()
-    except Exception:
-        return None
+# ==============================================================================
+# region Helper types
+# ==============================================================================
 
+class InvalidSortAttributeError(ValueError):
+    pass
 
 
 class BrowserFamily(Enum):
@@ -49,7 +42,6 @@ class BrowserFamily(Enum):
 
 @dataclass
 class Bookmark:
-    # 'guid', 'id', 'name', 'type', 'url', 'location', 'date_added_fmt', 'date_last_used_fmt'
     id: str
     name: str
     type: str
@@ -68,6 +60,17 @@ def _bookmark_from_json(data: dict, strict: bool=False):
     field_names = {f.name for f in fields(Bookmark)}
     filtered = {k: v for k, v in data.items() if k in field_names}
     return Bookmark(**filtered)
+
+
+def _convert_bookmarks_to_objects(bookmarks_dicts: list[dict[str, Any]]) -> list[Bookmark]:
+    bookmarks = []
+    for bm_dict in bookmarks_dicts:
+        try:
+            bookmarks.append( _bookmark_from_json(bm_dict) )
+        except Exception as e:
+            raise Exception(f"unable to create Bookmarks class from dict \nexception: {e}")
+    return bookmarks
+
 
 # ==============================================================================
 # region BookmarksGetter
@@ -98,6 +101,7 @@ class BookmarksGetter:
             raise NotImplementedError(f'no support for firefox yet')
         self.bookmarks_file = self._get_bookmarks_file(browser, profile, localappdata)
 
+
     def get_bookmarks(
         self,
         foldername: str|None=None,
@@ -109,22 +113,22 @@ class BookmarksGetter:
         if domain and not isinstance(domain, list):
             domain = [domain]
         
-        # get bookmarks as dicts
+        # get bookmarks
         bookmarks_dicts: list[dict] = []
         match self.browser_family:
             case BrowserFamily.CHROME:
-                bookmarks_dicts = self._get_bookmarks_Chrome(self.bookmarks_file)
+                bookmarks_dicts = self._read_bookmarks_Chrome(self.bookmarks_file)
             case BrowserFamily.FIREFOX:
-                raise Exception(f"you shouldn't be here, wtf? firefox not support")
+                bookmarks_dicts = self._read_bookmarks_Firefox(self.bookmarks_file)
             case _:
                 raise Exception(f"browser family wrong, wtfff? {self.browser_family}")
         
-        bookmarks: list[Bookmark] = self._convert_to_Bookmarks_class(bookmarks_dicts)
+        bookmarks: list[Bookmark] = _convert_bookmarks_to_objects(bookmarks_dicts)
         
         # filter foldername
         if foldername is not None:
             foldername = foldername.lower()
-            if '/' in foldername: # ie: folder/subfolder
+            if '/' in foldername: # eg: folder/subfolder
                 bookmarks = [
                     b for b in bookmarks
                     if foldername in b.location.lower()
@@ -139,7 +143,7 @@ class BookmarksGetter:
         if domain is not None:
             bookmarks = [
                 b for b in bookmarks
-                if 0 != len([dom for dom in domain if dom.lower() in b.url.lower()])
+                if 0 != len([dom for dom in domain if dom.lower() in b.url.lower()]) # at least one domain found in url
             ]
         
         # sort
@@ -148,37 +152,31 @@ class BookmarksGetter:
             reverse=reverse,
         )
         if sortby:
-            bookmarks.sort(
-                key=lambda bm: getattr(bm, sortby),
-                reverse=reverse,
-            )
-        
-        return bookmarks
-
-
-    def _convert_to_Bookmarks_class(self, bookmarks_dicts: list[dict]) -> list[Bookmark]:
-        bookmarks = []
-        for bm_dict in bookmarks_dicts:
             try:
-                bookmarks.append( _bookmark_from_json(bm_dict) )
-            except Exception as e:
-                raise Exception(f"unable to create Bookmarks class from dict \nexception: {e}")
-        return bookmarks
+                bookmarks.sort(
+                    key=lambda bm: getattr(bm, sortby),
+                    reverse=reverse,
+                )
+            except AttributeError as ae:
+                raise InvalidSortAttributeError(
+                    f"unable to sort Bookmarks by '{sortby}' attribute"
+                ) from ae
         
+        return bookmarks
+
 
     # ==========================================================================
     # region Bookmarks getting
     # ==========================================================================
     
-    def _get_bookmarks_Chrome(self, file: str, foldername:str|None=None):
+    def _read_bookmarks_Chrome(self, file: str) -> list[dict[str, Any]]:
         with open(file, 'r') as f:
             bookmarks_json = json.load(f)
         base_objects = bookmarks_json['roots']['bookmark_bar'].get('children')
-        return self._get_bookmarks_as_list_Chrome(base_objects)
+        return self._process_Chrome_bookmarks_as_list(base_objects)
 
-
-    def _get_bookmarks_as_list_Chrome(self, array:list[dict[str, Any]], location:str|None=None):
-        bookmarks:list[dict[str, Any]] = []
+    def _process_Chrome_bookmarks_as_list(self, array: list[dict[str, Any]], location: str|None=None):
+        bookmarks: list[dict[str, Any]] = []
         for obj in array:
             if obj.get('type') == 'url':
                 obj['location'] = location if location else ''
@@ -191,9 +189,11 @@ class BookmarksGetter:
                 name = obj.get('name')
                 children = obj.get('children', [])
                 new_location = f'{location}/{name}' if location else name
-                bookmarks.extend(self._get_bookmarks_as_list_Chrome(children, new_location))
+                bookmarks.extend(self._process_Chrome_bookmarks_as_list(children, new_location))
         return bookmarks
     
+    def _read_bookmarks_Firefox(self, file: str) -> list[dict[str, Any]]:
+        raise NotImplementedError(f"havent added firefox support yet")
     
     # ==========================================================================
     # region File getting
@@ -258,4 +258,3 @@ class BookmarksGetter:
         if location == foldername:
             return ''
         return location.replace(f'{foldername}/', '')
-
