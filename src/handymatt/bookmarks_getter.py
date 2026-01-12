@@ -59,15 +59,15 @@ class Bookmark:
     date_last_used: str
     date_modified: str=""
 
-    @classmethod
-    def from_dict(cls, data: dict, strict: bool=False):
-        if not isinstance(data, dict):
-            raise TypeError(f"data not of type dict")
-        if strict:
-            return cls(**data)
-        field_names = {f.name for f in fields(cls)}
-        filtered = {k: v for k, v in data.items() if k in field_names}
-        return cls(**filtered)
+
+def _bookmark_from_json(data: dict, strict: bool=False):
+    if not isinstance(data, dict):
+        raise TypeError(f"data not of type dict")
+    if strict:
+        return Bookmark(**data)
+    field_names = {f.name for f in fields(Bookmark)}
+    filtered = {k: v for k, v in data.items() if k in field_names}
+    return Bookmark(**filtered)
 
 # ==============================================================================
 # region BookmarksGetter
@@ -161,7 +161,7 @@ class BookmarksGetter:
         bookmarks = []
         for bm_dict in bookmarks_dicts:
             try:
-                bookmarks.append( Bookmark.from_dict(bm_dict) )
+                bookmarks.append( _bookmark_from_json(bm_dict) )
             except Exception as e:
                 raise Exception(f"unable to create Bookmarks class from dict \nexception: {e}")
         return bookmarks

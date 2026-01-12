@@ -9,7 +9,7 @@ packages=["src/handymatt"]
 
 [project]
 name = "handymatt"
-version = "2.0.1"
+version = "2.0.2"
 authors = [{ name="Matt Stirling", email="stirlingmattmarkus@gmail.com" }]
 description = "A collection of custom libraries for my personal use."
 readme = "README.md"
