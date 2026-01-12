@@ -15,8 +15,8 @@ if __name__ == '__main__':
         sortby='url',
     )
     
-    # # 
-    print(f'\nGot {len(bookmarks)} bookmarks:')
-    for bm in bookmarks:
-        print(bm.url)
-    print()
+    # 
+    # print(f'\nGot {len(bookmarks)} bookmarks:')
+    # for bm in bookmarks:
+    #     print(bm.url)
+    # print()

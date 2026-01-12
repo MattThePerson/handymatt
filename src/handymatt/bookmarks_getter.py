@@ -97,7 +97,6 @@ class BookmarksGetter:
         if self.browser_family is BrowserFamily.FIREFOX:
             raise NotImplementedError(f'no support for firefox yet')
         self.bookmarks_file = self._get_bookmarks_file(browser, profile, localappdata)
-        print(self.bookmarks_file)
 
     def get_bookmarks(
         self,
